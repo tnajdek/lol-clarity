@@ -10,6 +10,8 @@ class Vec2(object):
 
 class Rect(object):
     def __init__(self, start, end):
+        assert isinstance(start, Vec2)
+        assert isinstance(end, Vec2)
         self.start = start
         self.end = end
 
@@ -22,6 +24,8 @@ class Rect(object):
 class LolRect(Rect):
     def __init__(self, start, end, res_w, res_h):
         super(LolRect, self).__init__(start, end)
+        assert isinstance(res_w, Vec2)
+        assert isinstance(res_h, Vec2)
         self.res_w = res_w
         self.res_h = res_h
 

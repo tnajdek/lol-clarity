@@ -33,6 +33,13 @@ class TestClarity(unittest.TestCase):
         target_minimap_content = reAnchored.elements['MinimapContent']
         self.assertEqual(minimap_content.anchor, target_minimap_content.anchor)
 
+    def test_write_clarity_binary_contents(self):
+        spectatorUI = Clarity.from_binary(test_data)
+        minimap_content = spectatorUI.elements['MinimapContent']
+        minimap_content.anchor = Vec2(2.0, 3.0)
+        minimap_content.position = Rect(Vec2(1234, 5678), minimap_content.position.end)
+        self.assertEqual(spectatorUI.to_binary(), test_data_reanchored)
+
 
 if __name__ == '__main__':
     unittest.main()

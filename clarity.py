@@ -26,7 +26,7 @@ def read_element_anchor(binary):
 
 def read_element_position(binary):
     (offset, vals) = read_element_property(binary, POSITION_SIGNATURE, 'ffff')
-    return (offset, LolRect(vals[0], vals[1], vals[2], vals[3]))
+    return (offset, Rect(Vec2(vals[0], vals[1]), Vec2(vals[2], vals[3])))
 
 #@TODO offset should be stored for both
 def read_element_resolution(binary):
@@ -37,11 +37,14 @@ def read_element_resolution(binary):
 class Clarity(object):
     def __init__(self, binary):
         self.elements = {}
+        self.items = []
         items = binary.split(ELEMENT_SIGNATURE)
-        header = items.pop(0)
+        self.header = UIHeader(items.pop(0))
+        self.items.append(self.header)
         for item in items:
             el = UIElement(item)
             self.elements[el.name] = el
+            self.items.append(el)
 
     @classmethod
     def from_binary(cls, binary):
@@ -52,6 +55,18 @@ class Clarity(object):
         with open(filename, 'rb') as fh:
             return cls(fh.read())
 
+    def to_binary(self):
+        binary_items = [item.binary for item in self.items]
+        return ELEMENT_SIGNATURE.join(binary_items)
+
+    def to_file(self, filename):
+        with open(filename, 'wb') as f:
+            f.write(self.to_binary())
+
+
+class UIHeader(object):
+    def __init__(self, binary):
+        self.binary = binary
 
 class UIElement(object):
     def __init__(self, binary):
@@ -78,7 +93,7 @@ class UIElement(object):
         assert isinstance(value, Vec2)
         self._anchor = value
         packed = struct.pack('ff', value.x, value.y)
-        self.binary = self.binary[:self._anchor_offset] + packed + self.binary[:(self._position_offset + 8)]
+        self.binary = self.binary[:self._anchor_offset] + packed + self.binary[(self._anchor_offset + 8):]
 
     @property
     def position(self):
@@ -86,10 +101,10 @@ class UIElement(object):
 
     @position.setter
     def position(self, value):
-        assert isinstance(value, LolRect)
+        assert isinstance(value, Rect)
         self._position = value
-        packed = struct.pack('ffff', value.start, value.end, value.res_w, value.res_h)
-        self.binary = self.binary[:self._position_offset] + packed + self.binary[:(self._position_offset + 16)]
+        packed = struct.pack('ffff', value.start.x, value.start.y, value.end.x, value.end.y)
+        self.binary = self.binary[:self._position_offset] + packed + self.binary[(self._position_offset + 16):]
 
 
 
