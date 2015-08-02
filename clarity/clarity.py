@@ -1,6 +1,6 @@
 import struct
 from builtins import bytes
-from hud import Vec2, Rect, LolRect
+from .hud import Vec2, Rect, LolRect
 
 ELEMENT_SIGNATURE = b'\xdb\xbf\xef\x19\x10'
 ANCHOR_SIGNATURE = b'\x19\x6b\x7c\x32\x0b'

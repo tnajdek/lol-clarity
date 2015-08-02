@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+import os
 import unittest
-from hud import Vec2, Rect
-from clarity import Clarity, UIElement
+from clarity.hud import Vec2, Rect
+from clarity.clarity import Clarity, UIElement
 
-with open('spectator.bin', 'rb') as f:
+
+
+with open(os.path.dirname(__file__) + '/spectator.bin', 'rb') as f:
     test_data = f.read()
 
-with open('spectator-reanchored.bin', 'rb') as f:
+with open(os.path.dirname(__file__) + '/spectator-reanchored.bin', 'rb') as f:
     test_data_reanchored = f.read()
 
 class TestClarity(unittest.TestCase):
