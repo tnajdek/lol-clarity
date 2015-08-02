@@ -106,5 +106,3 @@ class UIElement(object):
         packed = struct.pack('ffff', value.start.x, value.start.y, value.end.x, value.end.y)
         self.binary = self.binary[:self._position_offset] + packed + self.binary[(self._position_offset + 16):]
 
-
-

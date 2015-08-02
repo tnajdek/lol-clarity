@@ -37,6 +37,7 @@ class LolRect(Rect):
             and self.res_h == other.res_h)
 
 def get_abs_scaled_rect(rect):
+    assert isinstance(rect, LolRect)
     return Rect(
         Vec2(
             rect.start.x / rect.res_w,
@@ -49,6 +50,7 @@ def get_abs_scaled_rect(rect):
     )
 
 def get_lol_scaled_rect(rect, res_w, res_h):
+    assert isinstance(rect, Rect)
     return LolRect(
         Vec2(
             rect.start.x * res_w,
