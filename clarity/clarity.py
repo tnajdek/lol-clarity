@@ -32,7 +32,7 @@ def read_element_position(binary):
 def read_element_resolution(binary):
     (offset_width, val_w) = read_element_property(binary, RES_W_SIGNATURE, 'I')
     (offset_height, val_h) = read_element_property(binary, RES_H_SIGNATURE, 'I')
-    return (offset_width, offset_height, Vec2(val_w[0], val_h[0]))
+    return (offset_width, offset_height, {'width': val_w[0], 'height':val_h[0] } )
 
 class Clarity(object):
     def __init__(self, binary):
@@ -74,15 +74,25 @@ class UIElement(object):
         (self._name_offset, self._name) = read_element_name(binary)
         (self._anchor_offset, self._anchor) = read_element_anchor(binary)
         (self._position_offset, self._position) = read_element_position(binary)
-        (self._res_w_offset, self._res_h_offset, self._res) = read_element_resolution(binary)
-
-    @property
-    def resolution(self):
-        return self._res
+        (self._res_w_offset, self._res_h_offset, self._resolution) = read_element_resolution(binary)
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def resolution(self):
+        return self._resolution
+
+    @resolution.setter
+    def resolution(self, value):
+        assert 'width' in value
+        assert 'height' in value
+        self._res = value
+        packed_res_w = struct.pack('I', value['width'])
+        packed_res_h = struct.pack('I', value['height'])
+        self.binary = self.binary[:self._res_w_offset] + packed_res_w + self.binary[self._res_w_offset + 4:]
+        self.binary = self.binary[:self._res_h_offset] + packed_res_h + self.binary[self._res_h_offset + 4:]
 
     @property
     def anchor(self):
@@ -105,4 +115,17 @@ class UIElement(object):
         self._position = value
         packed = struct.pack('ffff', value.start.x, value.start.y, value.end.x, value.end.y)
         self.binary = self.binary[:self._position_offset] + packed + self.binary[(self._position_offset + 16):]
+
+    @property
+    def rect(self):
+        return LolRect(self.position.start, self.position.end, self.resolution['width'], self.resolution['height'])
+
+    @rect.setter
+    def rect(self, value):
+        assert isinstance(value, LolRect)
+        self.position = Rect(value.start, value.end)
+        self.resolution = {
+            'width': value.res_w,
+            'height': value.res_h
+        }
 
