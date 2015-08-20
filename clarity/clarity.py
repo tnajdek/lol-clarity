@@ -9,10 +9,10 @@ RES_W_SIGNATURE = b'\xbb\xef\x24\x2d\x07'
 RES_H_SIGNATURE = b'\x56\xc1\x8a\x34\x07'
 
 def read_element_property(binary, signature, format):
-    if(binary.find(signature)):
-        offset = binary.find(signature) + len(signature)
+    if(binary.find(signature) > -1):
+        offset = binary.find(signature)
         length = struct.calcsize(format)
-        vals = struct.unpack_from(format, binary[offset:(offset + length)])
+        vals = struct.unpack_from(format, binary[(offset + len(signature)):(offset + len(signature) + length)])
         return (offset, vals)
     return None
 
@@ -21,8 +21,12 @@ def read_element_name(binary):
     return (2, binary[2:(2 + name_length)].decode('ascii'))
 
 def read_element_anchor(binary):
-    (offset, vals) = read_element_property(binary, ANCHOR_SIGNATURE, 'ff')
-    return (offset, Vec2(vals[0], vals[1]))
+    try:
+        (offset, vals) = read_element_property(binary, ANCHOR_SIGNATURE, 'ff')
+        return (offset, Vec2(vals[0], vals[1]))
+    except TypeError:
+        return (None, Vec2(0,0))
+
 
 def read_element_position(binary):
     (offset, vals) = read_element_property(binary, POSITION_SIGNATURE, 'ffff')
@@ -91,8 +95,8 @@ class UIElement(object):
         self._res = value
         packed_res_w = struct.pack('I', value['width'])
         packed_res_h = struct.pack('I', value['height'])
-        self.binary = self.binary[:self._res_w_offset] + packed_res_w + self.binary[self._res_w_offset + 4:]
-        self.binary = self.binary[:self._res_h_offset] + packed_res_h + self.binary[self._res_h_offset + 4:]
+        self.binary = self.binary[:self._res_w_offset] + RES_W_SIGNATURE + packed_res_w + self.binary[self._res_w_offset + len(RES_W_SIGNATURE) + 4:]
+        self.binary = self.binary[:self._res_h_offset] + RES_H_SIGNATURE + packed_res_h + self.binary[self._res_h_offset + len(RES_H_SIGNATURE) + 4:]
 
     @property
     def anchor(self):
@@ -103,7 +107,19 @@ class UIElement(object):
         assert isinstance(value, Vec2)
         self._anchor = value
         packed = struct.pack('ff', value.x, value.y)
-        self.binary = self.binary[:self._anchor_offset] + packed + self.binary[(self._anchor_offset + 8):]
+        if(value.x == 0 and value.y == 0):
+            # omit entirely if anchor is 0,0 (?)
+            if(self._anchor_offset is not None):
+                # previous had anchor but now shouldn't
+                # cut out the anchor bit:
+                self.binary = self.binary[:self._anchor_offset] + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
+                # set anchor to none
+                self._anchor_offset = None
+        else:
+            if(self._anchor_offset is None):
+                # previously didn't have anchor but now should have
+                self._anchor_offset = len(self.binary)
+            self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
 
     @property
     def position(self):
@@ -114,7 +130,7 @@ class UIElement(object):
         assert isinstance(value, Rect)
         self._position = value
         packed = struct.pack('ffff', value.start.x, value.start.y, value.end.x, value.end.y)
-        self.binary = self.binary[:self._position_offset] + packed + self.binary[(self._position_offset + 16):]
+        self.binary = self.binary[:self._position_offset] + POSITION_SIGNATURE + packed + self.binary[(self._position_offset + len(POSITION_SIGNATURE) + 16):]
 
     @property
     def rect(self):
