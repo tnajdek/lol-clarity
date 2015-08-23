@@ -7,6 +7,7 @@ ANCHOR_SIGNATURE = b'\x19\x6b\x7c\x32\x0b'
 POSITION_SIGNATURE = b'\x76\xbc\xf0\x8f\x0d'
 RES_W_SIGNATURE = b'\xbb\xef\x24\x2d\x07'
 RES_H_SIGNATURE = b'\x56\xc1\x8a\x34\x07'
+SOMETHING_BEFORE_ANCHOR_SIGNATURE = b'\xad\xec\xa5\x82\x07' #AD EC A5 82 07
 
 def read_element_property(binary, signature, format):
     if(binary.find(signature) > -1):
@@ -107,6 +108,8 @@ class UIElement(object):
         assert isinstance(value, Vec2)
         self._anchor = value
         packed = struct.pack('ff', value.x, value.y)
+
+        #@TODO: refactor me :)
         if(value.x == 0 and value.y == 0):
             # omit entirely if anchor is 0,0 (?)
             if(self._anchor_offset is not None):
@@ -118,7 +121,8 @@ class UIElement(object):
         else:
             if(self._anchor_offset is None):
                 # previously didn't have anchor but now should have
-                self._anchor_offset = len(self.binary)
+                self._anchor_offset = self.binary.find(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + len(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + 4
+                self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[self._anchor_offset:]
             self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
 
     @property
