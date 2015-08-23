@@ -2,7 +2,7 @@ import struct
 from builtins import bytes
 from .hud import Vec2, Rect, LolRect
 
-ELEMENT_SIGNATURE = b'\xdb\xbf\xef\x19\x10'
+NAME_SIGNATURE = b'\xdb\xbf\xef\x19\x10'
 ANCHOR_SIGNATURE = b'\x19\x6b\x7c\x32\x0b'
 POSITION_SIGNATURE = b'\x76\xbc\xf0\x8f\x0d'
 RES_W_SIGNATURE = b'\xbb\xef\x24\x2d\x07'
@@ -18,8 +18,11 @@ def read_element_property(binary, signature, format):
     return None
 
 def read_element_name(binary):
-    (name_length, ) = struct.unpack('H', binary[0:2])
-    return (2, binary[2:(2 + name_length)].decode('ascii'))
+    (offset, str_length) = read_element_property(binary, NAME_SIGNATURE, '<H')
+    str_length = str_length[0]
+    name_start = offset + len(NAME_SIGNATURE) + 2
+    name_end = offset + len(NAME_SIGNATURE) + 2 + str_length
+    return (offset, binary[name_start:name_end].decode('ascii'))
 
 def read_element_anchor(binary):
     try:
@@ -40,20 +43,36 @@ def read_element_resolution(binary):
     return (offset_width, offset_height, {'width': val_w[0], 'height':val_h[0] } )
 
 class Clarity(object):
-    def __init__(self, binary):
-        self.elements = {}
+    def __init__(self):
         self.items = []
-        items = binary.split(ELEMENT_SIGNATURE)
-        self.header = UIHeader(items.pop(0))
-        self.items.append(self.header)
-        for item in items:
-            el = UIElement(item)
-            self.elements[el.name] = el
-            self.items.append(el)
+        self.elements = {}
 
     @classmethod
     def from_binary(cls, binary):
-        return cls(binary)
+        clr = Clarity()
+        assert binary[0:4] == b'PROP'
+        clr.version = struct.unpack("<I", binary[4:8])[0]
+        clr.items_count = struct.unpack("<I", binary[8:12])[0]
+
+        element_heads = []
+
+        for i in range(clr.items_count):
+            element_head = binary[(12 + i * 4):(16 + i * 4)]
+            element_heads.append(element_head)
+
+        offset = 12 + clr.items_count * 4
+
+        for i in range(clr.items_count):
+            element_length = struct.unpack("<I", binary[offset:offset + 4])[0]
+            element_binary = binary[(offset + 4):(offset + 4 + element_length)]
+            element = UIElement(element_binary, element_heads[i])
+            clr.items.append(element)
+            clr.elements[element.name] = element
+            offset = offset + 4 + element_length
+
+        assert offset == len(binary)
+        assert len(clr.items) == clr.items_count
+        return clr
 
     @classmethod
     def from_file(cls, filename):
@@ -61,21 +80,28 @@ class Clarity(object):
             return cls(fh.read())
 
     def to_binary(self):
-        binary_items = [item.binary for item in self.items]
-        return ELEMENT_SIGNATURE.join(binary_items)
+        binary = b'PROP'
+        binary += struct.pack('<I', self.version)
+        binary += struct.pack('<I', len(self.elements))
+
+        for element in self.items:
+            binary += element.head
+
+        for element in self.items:
+            binary += struct.pack('<I', len(element.binary))
+            binary += element.binary
+
+        return binary
 
     def to_file(self, filename):
         with open(filename, 'wb') as f:
             f.write(self.to_binary())
 
 
-class UIHeader(object):
-    def __init__(self, binary):
-        self.binary = binary
-
 class UIElement(object):
-    def __init__(self, binary):
+    def __init__(self, binary, element_head):
         self.binary = binary
+        self.head = element_head
         (self._name_offset, self._name) = read_element_name(binary)
         (self._anchor_offset, self._anchor) = read_element_anchor(binary)
         (self._position_offset, self._position) = read_element_position(binary)
