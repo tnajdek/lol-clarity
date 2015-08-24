@@ -31,10 +31,14 @@ def read_element_anchor(binary):
     except TypeError:
         return (None, Vec2(0,0))
 
-
 def read_element_position(binary):
     (offset, vals) = read_element_property(binary, POSITION_SIGNATURE, 'ffff')
     return (offset, Rect(Vec2(vals[0], vals[1]), Vec2(vals[2], vals[3])))
+
+def read_properties_count(binary):
+    offset = 4
+    value = struct.unpack("B", binary[offset:offset+1])[0]
+    return (offset, value)
 
 #@TODO offset should be stored for both
 def read_element_resolution(binary):
@@ -106,6 +110,7 @@ class UIElement(object):
         (self._anchor_offset, self._anchor) = read_element_anchor(binary)
         (self._position_offset, self._position) = read_element_position(binary)
         (self._res_w_offset, self._res_h_offset, self._resolution) = read_element_resolution(binary)
+        (self._properties_count_offset, self._properties_count) = read_properties_count(binary)
 
     @property
     def name(self):
@@ -144,12 +149,16 @@ class UIElement(object):
                 self.binary = self.binary[:self._anchor_offset] + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
                 # set anchor to none
                 self._anchor_offset = None
+                self.properties_count -= 1
         else:
             if(self._anchor_offset is None):
                 # previously didn't have anchor but now should have
-                self._anchor_offset = self.binary.find(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + len(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + 4
-                self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[self._anchor_offset:]
-            self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
+                # self._anchor_offset = self.binary.find(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + len(SOMETHING_BEFORE_ANCHOR_SIGNATURE) + 4
+                self._anchor_offset = len(self.binary)
+                self.binary = self.binary + ANCHOR_SIGNATURE + packed
+                self.properties_count += 1
+            else:
+                self.binary = self.binary[:self._anchor_offset] + ANCHOR_SIGNATURE + packed + self.binary[(self._anchor_offset + len(ANCHOR_SIGNATURE) + 8):]
 
     @property
     def position(self):
@@ -174,4 +183,15 @@ class UIElement(object):
             'width': value.res_w,
             'height': value.res_h
         }
+
+    @property
+    def properties_count(self):
+        return self._properties_count
+
+    @properties_count.setter
+    def properties_count(self, value):
+        assert value >= 0 <= 255
+        self._properties_count = value
+        self.binary = self.binary[:self._properties_count_offset] + struct.pack('B', value) + self.binary[(self._properties_count_offset + 1):]
+
 

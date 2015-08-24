@@ -22,7 +22,7 @@ config = {
     'author': 'Tom Najdek',
     'url': 'https://github.com/tnajdek/lol-clarity',
     'author_email': 'tom@doppnet.com',
-    'version': '0.2.0',
+    'version': '0.3.0',
     'packages': ['clarity'],
     'install_requires': ['future']
 }

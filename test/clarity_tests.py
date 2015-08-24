@@ -42,12 +42,15 @@ class TestClarity(unittest.TestCase):
     def test_write_clarity_binary_contents(self):
         spectatorUI = Clarity.from_binary(test_data)
         minimap_content = spectatorUI.elements['MinimapContent']
+        self.assertEqual(minimap_content.properties_count, 12)
         minimap_content.anchor = Vec2(2.0, 3.0)
         minimap_content.position = Rect(Vec2(1234, 5678), minimap_content.position.end)
+        self.assertEqual(minimap_content.properties_count, 12)
         self.assertEqual(spectatorUI.to_binary(), test_data_reanchored)
 
     def test_process_clarity(self):
         ui = Clarity.from_binary(ui_data)
+
         self.assertEqual(len(ui.elements), 1379)
 
         element = ui.elements['TargetAD_Icon']
@@ -57,6 +60,7 @@ class TestClarity(unittest.TestCase):
         self.assertEqual(element.position.start.y, 16)
         self.assertEqual(element.position.end.x, 33)
         self.assertEqual(element.position.end.y, 35)
+        self.assertEqual(element.properties_count, 11)
 
         element.anchor = Vec2(0.5, 0)
         new_data = ui.to_binary()
@@ -69,6 +73,10 @@ class TestClarity(unittest.TestCase):
         self.assertEqual(new_element.position.start.y, 16)
         self.assertEqual(new_element.position.end.x, 33)
         self.assertEqual(new_element.position.end.y, 35)
+        self.assertEqual(new_element.properties_count, 12)
+
+        self.assertEqual(len(ui_data), 240323)
+        self.assertEqual(len(new_data), 240336)
 
     def test_dogfood(self):
         ui = Clarity.from_binary(ui_data)
